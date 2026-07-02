@@ -72,6 +72,13 @@ export default function PaymentForm() {
         const response = await axios.get(`/api/payment/status/${transactionId}`);
         if (response.data.success) {
           setPaymentStatus(response.data.payment.status);
+          setPaymentResult((prev: any) => ({
+            ...prev,
+            payment: {
+              ...prev?.payment,
+              ...response.data.payment,
+            },
+          }));
           
           if (['completed', 'failed', 'expired'].includes(response.data.payment.status)) {
             clearInterval(interval);
@@ -111,6 +118,8 @@ export default function PaymentForm() {
           <div className="px-6 py-8">
             {paymentResult?.success && paymentStatus === 'completed' ? (
               <PaymentSuccess payment={paymentResult.payment} />
+            ) : paymentResult?.success && ['failed', 'expired'].includes(paymentStatus || '') ? (
+              <PaymentFailure payment={paymentResult.payment} status={paymentStatus} failureReason={paymentResult.payment.failureReason} />
             ) : paymentResult?.success && paymentStatus ? (
               <PaymentProcessing 
                 status={paymentStatus} 
@@ -355,6 +364,47 @@ export default function PaymentForm() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PaymentFailure({ payment, status, failureReason }: any) {
+  return (
+    <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+      <div className="flex items-center space-x-3 mb-4">
+        <FaCheckCircle className="text-red-600 text-3xl" />
+        <div>
+          <h3 className="text-lg font-semibold text-red-900">Payment Failed</h3>
+          <p className="text-red-700 mt-1">The payment did not complete successfully.</p>
+        </div>
+      </div>
+      <div className="bg-white rounded-lg p-4 space-y-2">
+        <div className="flex justify-between">
+          <span className="text-gray-600">Transaction ID:</span>
+          <span className="font-mono text-gray-900">{payment.transactionId}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Invoice Number:</span>
+          <span className="font-mono text-gray-900">{payment.invoiceNumber}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-gray-600">Status:</span>
+          <span className="font-semibold text-red-600">{status?.toUpperCase()}</span>
+        </div>
+        {failureReason && (
+          <div className="rounded-lg bg-red-50 border border-red-100 p-3 mt-3">
+            <p className="text-sm text-red-700">{typeof failureReason === 'string' ? failureReason : JSON.stringify(failureReason)}</p>
+          </div>
+        )}
+      </div>
+      <a
+        href={`/invoice/${payment.invoiceNumber}`}
+        target="_blank"
+        className="mt-4 inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-medium"
+      >
+        <FaFileInvoice />
+        <span>View Invoice</span>
+      </a>
     </div>
   );
 }

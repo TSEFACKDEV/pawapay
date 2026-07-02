@@ -118,7 +118,7 @@ export async function initializeMobileMoneyPayment(
 export async function checkPaymentStatus(transactionId: string): Promise<any> {
   try {
     const response = await axios.get(
-      `${PAWAPAY_API_BASE_URL}/v1/deposits/${transactionId}`,
+      `${PAWAPAY_API_BASE_URL}/v2/deposits/${transactionId}`,
       {
         headers: {
           'Authorization': `Bearer ${PAWAPAY_API_TOKEN}`,

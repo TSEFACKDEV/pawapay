@@ -1,18 +1,28 @@
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 
-
-
+function mapStatus(status: string): string {
+  const statusMap: Record<string, string> = {
+    ACCEPTED: 'processing',
+    PROCESSING: 'processing',
+    COMPLETED: 'completed',
+    SUCCESS: 'completed',
+    FAILED: 'failed',
+    REJECTED: 'failed',
+    EXPIRED: 'expired',
+  };
+  return statusMap[status.toUpperCase()] || 'pending';
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Verify webhook signature if PawaPay provides one
     const signature = request.headers.get('x-pawapay-signature');
     // Add signature verification here if PawaPay provides it
-    
-    const { depositId, status, failureReason, amount, currency } = body;
+
+    const { depositId, status, failureReason } = body;
 
     if (!depositId || !status) {
       return NextResponse.json(
@@ -21,61 +31,64 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update payment status in database
-    const paymentUpdate = await prisma.payment.updateMany({
+    const normalizedStatus = status.toString().toUpperCase();
+    const mappedStatus = mapStatus(normalizedStatus);
+
+    const payment = await prisma.payment.findUnique({
+      where: { transactionId: depositId },
+    });
+
+    if (!payment) {
+      console.warn(`No payment found for transaction ID: ${depositId}`);
+      return NextResponse.json({
+        success: true,
+        message: 'Webhook received but no matching payment found',
+      });
+    }
+
+    const existingMetadata = typeof payment.metadata === 'object' && payment.metadata ? payment.metadata : {};
+
+    await prisma.payment.update({
       where: { transactionId: depositId },
       data: {
-        status: status.toLowerCase(),
-        failureReason: failureReason || null,
+        status: mappedStatus,
+        failureReason: failureReason ? JSON.stringify(failureReason) : null,
         metadata: {
-          webhookReceived: new Date().toISOString(),
-          rawWebhookData: body
-        }
+          ...existingMetadata,
+          webhookReceivedAt: new Date().toISOString(),
+          rawWebhookData: body,
+        },
       },
     });
 
-    if (paymentUpdate.count === 0) {
-      console.warn(`No payment found for transaction ID: ${depositId}`);
-      // Still return 200 to acknowledge receipt
-      return NextResponse.json({ 
-        success: true, 
-        message: 'Webhook received but no matching payment found' 
+    if (mappedStatus === 'completed') {
+      await prisma.invoice.update({
+        where: { paymentId: payment.id },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
+        },
+      });
+    } else if (mappedStatus === 'failed' || mappedStatus === 'expired') {
+      await prisma.invoice.update({
+        where: { paymentId: payment.id },
+        data: {
+          status: 'FAILED',
+        },
       });
     }
 
-    // Update invoice if payment completed
-    if (status === 'SUCCESS' || status === 'COMPLETED') {
-      const payment = await prisma.payment.findFirst({
-        where: { transactionId: depositId },
-      });
+    console.log(`Payment webhook processed successfully: ${depositId} - ${normalizedStatus}`);
 
-      if (payment) {
-        await prisma.invoice.update({
-          where: { paymentId: payment.id },
-          data: {
-            status: 'PAID',
-            paidAt: new Date(),
-          },
-        });
-      }
-    }
-
-    // Log successful webhook processing
-    console.log(`Payment webhook processed successfully: ${depositId} - ${status}`);
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Webhook processed successfully' 
+    return NextResponse.json({
+      success: true,
+      message: 'Webhook processed successfully',
     });
-
   } catch (error) {
     console.error('Payment webhook error:', error);
-    
-    // Always return 200 to acknowledge receipt, even on error
-    // This prevents PawaPay from retrying excessively
     return NextResponse.json(
       { success: false, error: 'Internal processing error' },
-      { status: 200 } // Note: 200 status even on error
+      { status: 200 }
     );
   }
 }

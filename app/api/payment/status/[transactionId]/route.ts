@@ -16,22 +16,45 @@ export async function GET(
     // Check status from PawaPay
     const statusResponse = await checkPaymentStatus(transactionId);
 
-    // Update payment status in database
+    if (statusResponse.status !== 'FOUND' || !statusResponse.data) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Payment not found in PawaPay',
+        },
+        { status: 404 }
+      );
+    }
+
+    const deposit = statusResponse.data;
+    const mappedStatus = mapStatus(deposit.status);
+
     const payment = await prisma.payment.update({
       where: { transactionId },
       data: {
-        status: mapStatus(statusResponse.status),
-        failureReason: statusResponse.failureReason,
+        status: mappedStatus,
+        failureReason: deposit.failureReason ? JSON.stringify(deposit.failureReason) : null,
+        metadata: {
+          ...(deposit.metadata || {}),
+          statusCheckedAt: new Date().toISOString(),
+          lastStatusResponse: deposit,
+        },
       },
     });
 
-    // Update invoice if payment completed
-    if (payment.status === 'completed') {
+    if (mappedStatus === 'completed') {
       await prisma.invoice.update({
         where: { paymentId: payment.id },
         data: {
           status: 'PAID',
           paidAt: new Date(),
+        },
+      });
+    } else if (mappedStatus === 'failed' || mappedStatus === 'expired') {
+      await prisma.invoice.update({
+        where: { paymentId: payment.id },
+        data: {
+          status: 'FAILED',
         },
       });
     }
@@ -42,6 +65,7 @@ export async function GET(
         transactionId: payment.transactionId,
         status: payment.status,
         invoiceNumber: payment.invoiceNumber,
+        failureReason: payment.failureReason,
       },
     });
   } catch (error: any) {

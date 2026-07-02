@@ -11,74 +11,74 @@ import { prisma } from '@/lib/prisma';
 const PAWAPAY_API_BASE_URL = process.env.PAWAPAY_API_BASE_URL || 'https://api.pawapay.io';
 const PAWAPAY_API_TOKEN = process.env.PAWAPAY_API_TOKEN;
 
-// Mapping des codes pays ISO
+// Mapping des codes pays ISO (2 lettres pour API interne, 3 lettres pour providers)
 const COUNTRY_CODES: Record<string, string> = {
-  'Benin': 'BJ',
-  'Cameroon': 'CM',
-  'Cote d\'Ivoire': 'CI',
-  'Democratic Republic of the Congo': 'CD',
-  'Gabon': 'GA',
-  'Kenya': 'KE',
-  'Republic of the Congo': 'CG',
-  'Rwanda': 'RW',
-  'Senegal': 'SN',
-  'Sierra Leone': 'SL',
-  'Uganda': 'UG',
-  'Zambia': 'ZM',
+  'Benin': 'BEN',
+  'Cameroon': 'CMR',
+  'Cote d\'Ivoire': 'CIV',
+  'Democratic Republic of the Congo': 'COD',
+  'Gabon': 'GAB',
+  'Kenya': 'KEN',
+  'Republic of the Congo': 'COG',
+  'Rwanda': 'RWA',
+  'Senegal': 'SEN',
+  'Sierra Leone': 'SLE',
+  'Uganda': 'UGA',
+  'Zambia': 'ZMB',
 };
 
-// Mapping des opérateurs par pays
+// Mapping des opérateurs par pays - Utilise codes pays 3 lettres ISO-3166
 const OPERATOR_MAPPING: Record<string, Record<string, string>> = {
   'Cameroon': {
-    'MTN': 'MTN_MOMO_CM',
-    'ORANGE': 'ORANGE_MONEY_CM',
+    'MTN': 'MTN_MOMO_CMR',
+    'ORANGE': 'ORANGE_MONEY_CMR',
   },
   'Benin': {
-    'MTN': 'MTN_MOMO_BJ',
-    'MOOV': 'MOOV_BJ',
+    'MTN': 'MTN_MOMO_BEN',
+    'MOOV': 'MOOV_BEN',
   },
   'Cote d\'Ivoire': {
-    'MTN': 'MTN_MOMO_CI',
-    'ORANGE': 'ORANGE_MONEY_CI',
-    'MOOV': 'MOOV_CI',
+    'MTN': 'MTN_MOMO_CIV',
+    'ORANGE': 'ORANGE_MONEY_CIV',
+    'MOOV': 'MOOV_CIV',
   },
   'Democratic Republic of the Congo': {
-    'ORANGE': 'ORANGE_MONEY_CD',
-    'AIRTEL': 'AIRTEL_MONEY_CD',
-    'VODACOM': 'MPESA_CD',
+    'ORANGE': 'ORANGE_MONEY_COD',
+    'AIRTEL': 'AIRTEL_MONEY_COD',
+    'VODACOM': 'MPESA_COD',
   },
   'Gabon': {
-    'AIRTEL': 'AIRTEL_MONEY_GA',
-    'MOOV': 'MOOV_GA',
+    'AIRTEL': 'AIRTEL_MONEY_GAB',
+    'MOOV': 'MOOV_GAB',
   },
   'Kenya': {
-    'MPESA': 'MPESA_KE',
+    'MPESA': 'MPESA_KEN',
   },
   'Republic of the Congo': {
-    'MTN': 'MTN_MOMO_CG',
-    'AIRTEL': 'AIRTEL_MONEY_CG',
+    'MTN': 'MTN_MOMO_COG',
+    'AIRTEL': 'AIRTEL_MONEY_COG',
   },
   'Rwanda': {
-    'MTN': 'MTN_MOMO_RW',
-    'AIRTEL': 'AIRTEL_MONEY_RW',
+    'MTN': 'MTN_MOMO_RWA',
+    'AIRTEL': 'AIRTEL_MONEY_RWA',
   },
   'Senegal': {
-    'ORANGE': 'ORANGE_MONEY_SN',
-    'FREE': 'FREE_MONEY_SN',
-    'EXPRESSO': 'EXPRESSO_MONEY_SN',
+    'ORANGE': 'ORANGE_MONEY_SEN',
+    'FREE': 'FREE_MONEY_SEN',
+    'EXPRESSO': 'EXPRESSO_MONEY_SEN',
   },
   'Sierra Leone': {
-    'ORANGE': 'ORANGE_MONEY_SL',
-    'AFRICELL': 'AFRICELL_MONEY_SL',
+    'ORANGE': 'ORANGE_MONEY_SLE',
+    'AFRICELL': 'AFRICELL_MONEY_SLE',
   },
   'Uganda': {
-    'MTN': 'MTN_MOMO_UG',
-    'AIRTEL': 'AIRTEL_MONEY_UG',
+    'MTN': 'MTN_MOMO_UGA',
+    'AIRTEL': 'AIRTEL_MONEY_UGA',
   },
   'Zambia': {
-    'MTN': 'MTN_MOMO_ZM',
-    'AIRTEL': 'AIRTEL_MONEY_ZM',
-    'ZAMTEL': 'ZAMTEL_MONEY_ZM',
+    'MTN': 'MTN_MOMO_ZMB',
+    'AIRTEL': 'AIRTEL_MONEY_ZMB',
+    'ZAMTEL': 'ZAMTEL_MONEY_ZMB',
   },
 };
 

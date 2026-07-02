@@ -1,5 +1,6 @@
 // app/api/payment/initiate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 import axios from 'axios';
 import { prisma } from '@/lib/prisma';
@@ -132,34 +133,21 @@ async function initializeMobileMoneyPayment(data: {
   const formattedPhone = formatPhoneNumber(data.phoneNumber, data.country);
   const operatorCode = OPERATOR_MAPPING[data.country]?.[data.operator];
 
-  // Générer un ID de dépôt unique
-  const depositId = `DEP-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  // Générer un ID de dépôt unique (UUIDv4)
+  const depositId = crypto.randomUUID();
 
-  // Construction du payload selon la documentation PawaPay
+  // Construction du payload selon la documentation PawaPay v2
+  // https://docs.pawapay.io/v2/docs/deposits
   const payload = {
     depositId: depositId,
     amount: data.amount.toString(),
     currency: data.currency,
-    country: countryCode,
-    correspondent: operatorCode || data.operator,
     payer: {
-      type: 'MSISDN',
-      address: {
-        value: formattedPhone
+      type: 'MMO',
+      accountDetails: {
+        phoneNumber: formattedPhone,
+        provider: operatorCode || data.operator
       }
-    },
-    customer: {
-      name: data.customerName,
-      email: data.customerEmail
-    },
-    statementDescription: data.reasons?.[0] || 'Payment for services',
-    metadata: {
-      customerName: data.customerName,
-      customerEmail: data.customerEmail,
-      reference: data.reference || '',
-      reasons: data.reasons || [],
-      initiatedFrom: 'web',
-      timestamp: new Date().toISOString()
     }
   };
 
@@ -167,7 +155,7 @@ async function initializeMobileMoneyPayment(data: {
 
   try {
     const response = await axios.post(
-      `${PAWAPAY_API_BASE_URL}/v1/deposits`,
+      `${PAWAPAY_API_BASE_URL}/v2/deposits`,
       payload,
       {
         headers: {
@@ -195,6 +183,7 @@ async function initializeMobileMoneyPayment(data: {
         statusText: error.response?.statusText,
         data: error.response?.data,
         headers: error.response?.headers,
+        requestPayload: payload,
       });
       
       throw new Error(

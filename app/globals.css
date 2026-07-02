@@ -1,0 +1,42 @@
+/* app/globals.css */
+@import 'tailwindcss';
+
+:root {
+  /* Fallbacks to avoid fetching Google Fonts during build */
+  --font-geist-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+    "Courier New", monospace;
+}
+
+html {
+  font-family: var(--font-geist-sans);
+}
+
+@theme {
+  --color-primary: #2563eb;
+  --color-secondary: #4f46e5;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: var(--font-geist-sans);
+  }
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-geist-mono);
+}
+
+@layer components {
+  .form-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
